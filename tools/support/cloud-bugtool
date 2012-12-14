@@ -1,0 +1,422 @@
+#!/usr/bin/python
+
+from os.path import isdir
+
+
+def info(msg, result=None):
+    from sys import stdout
+    output = ""
+
+    if msg is not None:
+        output = "%-80s" % msg
+
+    if result is True:
+        output += "[ \033[92m%-2s\033[0m ]\n" % "OK"
+    elif result is False:
+        output += "[ \033[91m%-6s\033[0m ]\n" % "FAILED"
+    stdout.write(output)
+    stdout.flush()
+
+
+def info2(msg):
+    from sys import stdout
+    output = ""
+    output += "\033[91m%-2s\033[0m" % msg
+    stdout.write(output)
+    stdout.flush()
+
+
+def print_sbs_name(p_name):
+    if p_name:
+        print "Collecting data from %s subsystem" % p_name
+    else:
+        print "UNKNOWN subsystem (!?)"
+
+
+def mkdir(p_path):
+    """
+        create directory, helper
+    """
+    from os import makedirs
+    if p_path:
+        try:
+            makedirs(p_path)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                pass
+            else:
+                raise
+
+
+def rm_rf(p_path):
+    from shutil import rmtree
+    from os.path import isdir
+
+    if isdir(p_path):
+        rmtree(p_path)
+
+
+def cp_ar(p_src_path, p_dst_path):
+    """ use this to copy directories recursivly but also accept files """
+    from os.path import isdir
+    from shlex import split
+    from subprocess import Popen
+
+    if isdir(p_src_path) and isdir(p_dst_path):
+        cmd = "cp -LR " + p_src_path + " " + p_dst_path
+        cmd_args = split(cmd)
+        try:
+            p = Popen(cmd_args, -1)
+            p.wait()
+        except OSError as e:
+            print e
+    else:
+        print "FAIL (one of args is not a valid directory): cp -arv %s %s" \
+            % (p_src_path, p_dst_path)
+        return False
+
+
+def compress_all_logs(p_path):
+    """ TODO: check what are the compression tools available,
+        now assuming default format
+    """
+    from os import getcwd
+    from os import chdir
+    from os import walk
+    from sys import stdout
+    from os.path import isdir
+    from os.path import split
+    from os.path import join
+    from zipfile import ZipFile
+    from zipfile import BadZipfile
+
+    if isdir(p_path):
+        print "Compressing %s . . . please wait (this may take a while)." \
+             % p_path
+        """ we change the directory before we start compressing,
+            in this way we get get rid off  /tmp in final archive """
+
+        csbugtool_cwd = getcwd()
+        chdir("/tmp")
+        path_split = split(p_path)
+        path_split2 = split(path_split[0])
+        zipfile_name = path_split2[1] + ".zip"
+
+        try:
+            zf = ZipFile(zipfile_name, "w")
+            for root, dirs, files in walk(path_split2[1]):
+                for filename in files:
+                    if (filename == "cloud.keystore" or \
+                        filename == "cloudmanagementserver.keystore" or \
+                        filename == "key"):
+                            continue
+                    file = join(root, filename)
+                    zf.write(join(file))
+            zf.close()
+            info = "Diagnostic written and ready sent to support: "
+            stdout.write(info)
+            info2(path_split[0] + ".zip")
+            print
+        except BadZipfile as ze:
+            print "FAIL Unable to create zip archive."
+            print ze
+            return -1
+
+        """ after we compress all the logs we going back to where we were """
+        chdir(csbugtool_cwd)
+    else:
+        print "FAIL (this is not a valid directory): %s Unable to compress" \
+             % p_path
+        return False
+
+
+def sbs_system_cmd_exec(p_cmd, p_path):
+    from io import open
+    from shlex import split
+    from os.path import isdir
+    from subprocess import Popen
+
+    out_file = p_path + "/" + p_cmd.replace(" ", "")
+    # print "%s, %s, %s" % (p_cmd,p_path,out_file)
+
+    """ exec commands """
+    if isdir(p_path):
+        cmd_args = split(p_cmd)
+        try:
+            file = open(out_file, 'w')
+            p = Popen(cmd_args, -1, None, None, file)
+            p.wait()
+            file.close()
+        except OSError as e:
+            print e
+    else:
+        print "FAIL (this is not a valid directory): %s" % p_path
+        return False
+
+
+def get_db_properties():
+    from io import BytesIO
+    from os.path import isfile
+    from ConfigParser import ConfigParser
+    """ reading /etc/cloud/management/db.properties, I am using special
+    hack to read the config file our config file does not have any
+    sections and ConfigParser expect to have at least one
+    """
+
+    db_dict = {}
+    db_prop_file = "/etc/cloud/management/db.properties"
+    db_dict["db_prop_file"] = db_prop_file
+
+    if isfile(db_prop_file):
+        config_file = open(db_prop_file)
+        """ reading file to add one fake section, ConfigParser
+        REQUIERS has one top section so we are good and creating
+        this fake top section """
+        config_file_content = config_file.read()
+        config_file.close()
+        """ adding fake section """
+        config_file_content_wit_section = "[default_section]\n" \
+            + config_file_content
+        confif_file_content_io = BytesIO(config_file_content_wit_section)
+
+        config = ConfigParser()
+        config.readfp(confif_file_content_io)
+
+        db_dict["db_cloud_host"] = \
+            config.get("default_section", "db.cloud.host")
+        db_dict["db_cloud_username"] = \
+            config.get("default_section", "db.cloud.username")
+        db_dict["db_cloud_password"] = \
+            config.get("default_section", "db.cloud.password")
+        db_dict["db_enc_type"] = \
+            config.get("default_section", "db.cloud.encryption.type")
+
+    else:
+        print "Unable to config file %s" % db_prop_file
+
+    """ how DB pass is encrypted if at all """
+    key_file = "/etc/cloud/management/key"
+    if isfile(key_file):
+        key_file_fd = open(key_file)
+        """ we expect just one line """
+        line = key_file_fd.readline()
+        key_file_fd.close()
+        db_dict["db_msKey"] = line
+    else:
+        print "Cannot find database key file"
+        return None
+    return db_dict
+
+
+def decrypt_db_pass(p_db_dict):
+    from shlex import split
+    from subprocess import Popen
+    from subprocess import PIPE
+
+    encPassword = p_db_dict["db_cloud_password"]
+    msKey = p_db_dict["db_msKey"]
+
+    """ chopping extra chars """
+    encPassword = encPassword[4:]
+    encPassword = encPassword[:len(encPassword) - 1]
+
+    db_pass_cmd = "java -classpath /usr/share/java/cloud-jasypt-1.8.jar \
+         org.jasypt.intf.cli.JasyptPBEStringDecryptionCLI decrypt.sh input=" \
+        + encPassword \
+        + " password=" \
+        + msKey \
+        + " verbose=false"
+
+    db_pwdec_exec = Popen(split(db_pass_cmd), stdout=PIPE)
+    p_db_dict["db_clear_text_pass"] = db_pwdec_exec.stdout.read().rstrip()
+    return p_db_dict
+
+
+def sbs_system(p_tmp_dir):
+    """
+        sbs_system()    system subsystem
+                collect system properties
+    """
+    sbs_name = "system"
+    cmds = ["df -h", "ps axf", "top -b -n 1", "free -k", "netstat -nlp",
+            "date", "dmesg", "uname -a", "whoami", "hostname",
+            "ifconfig -a", "route -n", "ip addr sh", "uptime", "hostname -s",
+            "mount -l", "hostname --fqdn"]
+    files = ["/etc/cloudstack-release", "/etc/hosts",
+        "/etc/resolv.conf", "/etc/sysctl.conf"]
+
+    print_sbs_name(sbs_name)
+    sbs_path = p_tmp_dir + "/" + sbs_name
+    mkdir(sbs_path)
+
+    for cmd in cmds:
+        sbs_system_cmd_exec(cmd, sbs_path)
+
+    """ copy /etc """
+    sbs_path_etc = sbs_path + "/etc"
+    mkdir(sbs_path_etc)
+    cp_ar("/etc/sysconfig", sbs_path_etc)
+    cp_ar("/etc/cloud", sbs_path_etc)
+
+
+def sbs_db(p_tmp_dir):
+    """
+        sbs_db()    database subsystem
+                takes database dump and logs if any
+
+                mysqldump -u root -p  cloud
+                mysqldump -u root -p  cloud_usage
+                scripts/storage/secondary/cloud-install-sys-tmplt
+    """
+    from shlex import split
+    from os.path import isdir
+    from os.path import isfile
+    from subprocess import Popen
+
+    if not (isfile("/bin/mysqldump") or isfile("/usr/bin/mysqldump") or\
+        isfile("/usr/local/bin/mysqldump")):
+        mysqldump_missing = "Unable to find mysqldump utility, \
+            skipping database dump"
+        info(mysqldump_missing, False)
+        return False
+
+    sbs_name = "database"
+    print_sbs_name(sbs_name)
+    sbs_path = p_tmp_dir + "/" + sbs_name
+    mkdir(sbs_path)
+    db_dict = get_db_properties()
+    """ as of now we can only decrypt db pass for file type encType """
+    if db_dict["db_enc_type"] != "file":
+        return None
+    decrypt_db_pass(db_dict)
+
+    db_dump_path_cloud = sbs_path + "/cloud.sql"
+    db_dump_path_cloud_usage = sbs_path + "/cloud_usage.sql"
+
+    """ we do not assume root user owns the cloud databases, we get the
+        username from /etc/cloud/management/db.properties
+    """
+    mysqldump_cloud = "mysqldump -u " + db_dict['db_cloud_username'] + \
+        " -h localhost -p" + db_dict['db_clear_text_pass'] + " cloud"
+    mysqldump_cloud_usage = "mysqldump -u " + db_dict['db_cloud_username'] + \
+        " -h localhost -p" + db_dict['db_clear_text_pass'] + " cloud_usage"
+
+    """ exec dump commands """
+    if isdir(sbs_path):
+        cmd_args_cloud = split(mysqldump_cloud)
+        cmd_args_cloud_usage = split(mysqldump_cloud_usage)
+        try:
+            file_cloud = open(db_dump_path_cloud, 'w')
+            p = Popen(cmd_args_cloud, -1, None, None, file_cloud)
+            p.wait()
+            file_cloud.close()
+
+            file_cloud_usage = open(db_dump_path_cloud_usage, 'w')
+            p = Popen(cmd_args_cloud_usage, -1, None, None, file_cloud_usage)
+            p.wait()
+            file_cloud_usage.close()
+        except OSError as e:
+            print e
+    else:
+        print "FAIL (this is not a valid directory): %s" % p_path
+        return False
+    #print db_dict
+
+
+def sbs_logs(p_tmp_dir):
+    """
+        sbs_logs() system subsystem
+                collect system properties
+    """
+    sbs_name = "logs"
+    print_sbs_name(sbs_name)
+    sbs_path = p_tmp_dir + "/system/var"
+    mkdir(sbs_path)
+
+    logs_path = "/var/log/"
+    cp_ar(logs_path, sbs_path)
+
+
+def sbs_servicevms(p_tmp_dir):
+    """
+        sbs_servicevms()    system subsystem
+                    collect system properties
+    """
+    sbs_name = "service_vm"
+    print_sbs_name(sbs_name)
+    sbs_path = p_tmp_dir + "/" + sbs_name
+    mkdir(sbs_path)
+
+
+def check_if_cs_installed():
+    """
+        TODO: find a better way to check if CS is installed
+
+        is there any CS installation here?
+        /usr/share/java/cloud-*
+        /etc/cloud
+        /var/log/cloud
+        /usr/share/java/cloud-*
+    """
+    from os import listdir
+    from re import search
+    from os.path import isfile
+
+    print ("Checking CloudStack instalation")
+
+    cs_installed = True
+
+    cs_dirs = ["/etc/cloud", "/var/log/cloud", "/usr/share/java"]
+    for d in cs_dirs:
+        cs_installed &= isdir(d)
+    jar_files = listdir("/usr/share/java")
+    if (search("cloud", str(jar_files))):
+        return cs_installed
+    return False
+
+
+def main():
+    """
+        main()    function calls subsystem sbs_* functions
+        sbs_*    implementations of subsystems collecting logs and other info
+        we assume the /tmp directory is our default log location
+    """
+    from os import removedirs
+    from os import uname
+    from os.path import exists
+    from os.path import split
+    from sys import exc_info
+    from sys import exit
+    from time import localtime, strftime
+    from tempfile import mkdtemp
+
+    if not check_if_cs_installed():
+        print("Cannot find a CloudStack installation on this system, exiting.")
+        exit()
+
+    """ tmp directory path:
+        /tmp/cloud-bugtool_<DATE and TIME>.<RANDOM STRING>/<HOSTNAME>/ """
+    localtime = localtime()
+    my_hostname = uname()[1]
+    str_date = strftime("%Y.%m.%d-%H.%M.%S", localtime)
+    tmp_prefix = "cloudstack-bugtool_" + str_date + "."
+    tmp_dir = mkdtemp(prefix=tmp_prefix)
+    tmp_dir = tmp_dir + "/" + my_hostname
+    mkdir(tmp_dir)
+
+    sbs_db(tmp_dir)
+    sbs_system(tmp_dir)
+    sbs_logs(tmp_dir)
+    sbs_servicevms(tmp_dir)
+    compress_all_logs(tmp_dir)
+
+    if exists(tmp_dir):
+        try:
+            rm_rf(tmp_dir)
+        except OSError as e:
+            print "Cannot remove temporary directory %s" % tmp_dir
+            print e
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,52 @@
+
+    ======================= cloud-bugtool =======================
+
+
+ABOUT:
+        The main purpose behind cs-bugtool is to make easier collecting
+    logs required for CloudStack/CloudPlatform troubleshooting
+    and it mainly comes from Support. For those familiar with Xen/XenServer
+    cs-bugtool name may sound similar to xen-bugtool, this similarity
+    is intentional.
+
+    Current version of cs-bugtool collects:
+     - basic system and environment information
+     - CP/CS management service logs
+     - basic system logs
+     - cloud database
+
+        We DO NOT collect and do not want to collect any sensitive information.
+    If there is still any sensitive pice of information please let us know
+    and we will try to remove it or replace by meaningless data.
+
+
+HELP:
+        In current version of cs-bugtool we netither requier not accept any
+    options, this can be changed in next iterations.
+    Just execute cs-bugtool and it collects information from below list
+    of CloudStack subsystems:
+        - database (cloud database dump)
+        - logs, content of /var/log/
+        - basic system settings including networking
+        - information from service vms (this is not implemented yet)
+    All above is compressed, written to .zip file and the archive location
+    is printed on user console.
+
+
+TODO:
+  - service VM subsystem implementation aka get the logs and other info
+    from service VMs (router, proxy, storage VM)
+  - better handling needs to be implemented for all subprocess calls
+    add proper exception handling
+  - operations on files and dirs, change to shutil module
+  - this version works only with cloud 3.0.x and only when password
+    is encrypted and saved in a file, other types of db pass storing
+    not implemented
+  - add the most popular imports to top of the file
+       grep import * | awk '{print $5}' | sort
+  - Manifest file: cs-bugtool version, local execution date
+  - detect subsystem results FAILED, OK
+
+
+BUGS:
+    send to radoslaw.smigielski@eu.citrix.com
