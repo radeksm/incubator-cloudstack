@@ -34,9 +34,7 @@ def print_sbs_name(p_name):
 
 
 def mkdir(p_path):
-    """
-        create directory, helper
-    """
+    """ create directory, helper """
     from os import makedirs
     if p_path:
         try:
@@ -94,7 +92,8 @@ def compress_all_logs(p_path):
         print "Compressing %s . . . please wait (this may take a while)." \
              % p_path
         """ we change the directory before we start compressing,
-            in this way we get get rid off  /tmp in final archive """
+            in this way we get get rid off  /tmp in final archive
+        """
 
         csbugtool_cwd = getcwd()
         chdir("/tmp")
@@ -159,8 +158,8 @@ def get_db_properties():
     from os.path import isfile
     from ConfigParser import ConfigParser
     """ reading /etc/cloud/management/db.properties, I am using special
-    hack to read the config file our config file does not have any
-    sections and ConfigParser expect to have at least one
+        hack to read the config file our config file does not have any
+        sections and ConfigParser expect to have at least one
     """
 
     db_dict = {}
@@ -170,8 +169,9 @@ def get_db_properties():
     if isfile(db_prop_file):
         config_file = open(db_prop_file)
         """ reading file to add one fake section, ConfigParser
-        REQUIERS has one top section so we are good and creating
-        this fake top section """
+            REQUIERS has one top section so we are good and creating
+            this fake top section
+        """
         config_file_content = config_file.read()
         config_file.close()
         """ adding fake section """
@@ -383,6 +383,7 @@ def main():
     """
     from os import removedirs
     from os import uname
+    from os import geteuid
     from os.path import exists
     from os.path import split
     from sys import exc_info
@@ -390,12 +391,21 @@ def main():
     from time import localtime, strftime
     from tempfile import mkdtemp
 
+    """ we need to have access to logs and CS config, checking is we are root """
+    if geteuid() != 0:
+        print "Sorry, you need to run this utility as root"
+        exit(1)
+
     if not check_if_cs_installed():
         print("Cannot find a CloudStack installation on this system, exiting.")
         exit()
 
     """ tmp directory path:
-        /tmp/cloud-bugtool_<DATE and TIME>.<RANDOM STRING>/<HOSTNAME>/ """
+        /tmp/cloud-bugtool_<DATE and TIME>.<RANDOM STRING>/<HOSTNAME>/ 
+    """
+    print "We are going to collect diagnostic information now, "\
+        "please review the content and remove\nall sensitive information "\
+        "before you sharing it with anybody."
     localtime = localtime()
     my_hostname = uname()[1]
     str_date = strftime("%Y.%m.%d-%H.%M.%S", localtime)
