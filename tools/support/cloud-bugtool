@@ -294,7 +294,7 @@ def sbs_system(p_tmp_dir):
     cmds = ["df -h", "ps axf", "top -b -n 1", "free -k", "netstat -nlp",
             "date", "dmesg", "uname -a", "whoami", "hostname",
             "ifconfig -a", "route -n", "ip addr sh", "uptime", "hostname -s",
-            "mount -l", "hostname --fqdn"]
+            "mount -l", "hostname --fqdn", "cloud-sccs"]
     files = ["/etc/cloudstack-release", "/etc/hosts",
         "/etc/resolv.conf", "/etc/sysctl.conf"]
 
