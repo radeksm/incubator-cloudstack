@@ -50,3 +50,25 @@ TODO:
 
 BUGS:
     send to radoslaw.smigielski@eu.citrix.com
+
+
+
+
+
+
+
+    =========================== jef =============================
+
+
+ABOUT:
+	jef - Java Exception Finder
+	   How often the only thing you need is to quickly find a Java
+	exception in your logs? jef is a very simple bash script which
+	let you quickly find all Java exceptions in your logs.
+	Like I said jef is _very_ simple tools and not optimal but it does
+	what it supposes to do for me, so hopefully for you too.
+
+TODO:
+	- make it smarter and more optimal
+BUGS:
+    send to radoslaw.smigielski@eu.citrix.com
