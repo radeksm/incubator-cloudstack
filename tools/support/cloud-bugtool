@@ -1,7 +1,60 @@
 #!/usr/bin/python
 
+VERSION = "0.2"
+
 from os.path import isdir
 
+def genManifestFile(p_argv, p_tmp_dir):
+    from xml.dom.minidom import getDOMImplementation
+    from xml.dom.minidom import Document
+    from time import localtime, strftime
+    from getpass import getuser
+    from os import uname
+
+    localtime = localtime()
+    my_hostname = uname()[1]
+    str_date = strftime("%Y.%m.%d-%H.%M.%S", localtime)
+    argvs = ""
+    for arg in p_argv:
+        argvs += arg+" "
+
+    docManifiest = Document()
+
+    elRoot = docManifiest.createElement("ROOT")
+    elName = docManifiest.createElement("name")
+    elHostname = docManifiest.createElement("hostname")
+    elVersion = docManifiest.createElement("version")
+    elTaken = docManifiest.createElement("taken")
+    elUser = docManifiest.createElement("user")
+    elOptions = docManifiest.createElement("options")
+
+    txtName = docManifiest.createTextNode("cloud-bugtool")
+    txtVersion = docManifiest.createTextNode(VERSION)
+    txtTaken = docManifiest.createTextNode(str_date)
+    txtHostname = docManifiest.createTextNode(my_hostname)
+    txtUser = docManifiest.createTextNode(getuser())
+    txtOptions = docManifiest.createTextNode(argvs)
+
+    docManifiest.appendChild(elRoot)
+    elRoot.appendChild(elName)
+    elRoot.appendChild(elVersion)
+    elRoot.appendChild(elHostname)
+    elRoot.appendChild(elTaken)
+    elRoot.appendChild(elUser)
+    elRoot.appendChild(elOptions)
+
+    elName.appendChild(txtName)
+    elVersion.appendChild(txtVersion)
+    elTaken.appendChild(txtTaken)
+    elUser.appendChild(txtUser)
+    elOptions.appendChild(txtOptions)
+    elHostname.appendChild(txtHostname)
+
+    xml = docManifiest.toxml()
+    # print xml
+    manifestFilePath = p_tmp_dir + "/manifest.xml"
+    manifestFile = open(manifestFilePath, 'w')
+    manifestFile.write(xml)
 
 def info(msg, result=None):
     from sys import stdout
@@ -375,7 +428,7 @@ def check_if_cs_installed():
     return False
 
 
-def main():
+def main(p_argv):
     """
         main()    function calls subsystem sbs_* functions
         sbs_*    implementations of subsystems collecting logs and other info
@@ -420,6 +473,8 @@ def main():
     sbs_servicevms(tmp_dir)
     compress_all_logs(tmp_dir)
 
+    genManifestFile(p_argv, tmp_dir)
+
     if exists(tmp_dir):
         try:
             rm_rf(tmp_dir)
@@ -429,4 +484,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv)
