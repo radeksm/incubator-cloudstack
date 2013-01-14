@@ -9,7 +9,7 @@ then
 fi
 
 x=0;
-
+exarr=()
 for Te in $( zgrep "Exception while executing" $logfile | awk '{print$2}' )
 do
 	echo "==> EXCEPTION $x BEGIN"
