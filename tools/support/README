@@ -3,13 +3,13 @@
 
 
 ABOUT:
-        The main purpose behind cs-bugtool is to make easier collecting
+        The main purpose behind cloud-bugtool is to make easier collecting
     logs required for CloudStack/CloudPlatform troubleshooting
     and it mainly comes from Support. For those familiar with Xen/XenServer
-    cs-bugtool name may sound similar to xen-bugtool, this similarity
+    cloud-bugtool name may sound similar to xen-bugtool, this similarity
     is intentional.
 
-    Current version of cs-bugtool collects:
+    Current version of cloud-bugtool collects:
      - basic system and environment information
      - CP/CS management service logs
      - basic system logs
@@ -21,9 +21,9 @@ ABOUT:
 
 
 HELP:
-        In current version of cs-bugtool we netither requier not accept any
+        In current version of cloud-bugtool we netither requier not accept any
     options, this can be changed in next iterations.
-    Just execute cs-bugtool and it collects information from below list
+    Just execute cloud-bugtool and it collects information from below list
     of CloudStack subsystems:
         - database (cloud database dump)
         - logs, content of /var/log/
@@ -44,7 +44,7 @@ TODO:
     not implemented
   - add the most popular imports to top of the file
        grep import * | awk '{print $5}' | sort
-  - Manifest file: cs-bugtool version, local execution date
+  - Manifest file: cloud-bugtool version, local execution date
   - detect subsystem results FAILED, OK
 
 
