@@ -2,7 +2,8 @@
 
 from os.path import isdir
 
-VERSION = "0.2"
+VERSION = "0.3"
+
 
 class CLOUD_BUGTOOL_MODE:
     from sys import exit
@@ -13,17 +14,17 @@ class CLOUD_BUGTOOL_MODE:
         sbs_servicevms
     """
     def __init__(self):
-        self.SYSTEM             = 1
-        self.DB                 = 2
-        self.LOGS_CP_LATEST     = 4
-        self.LOGS_CP_ALL        = 8
+        self.SYSTEM = 1
+        self.DB = 2
+        self.LOGS_CP_LATEST = 4
+        self.LOGS_CP_ALL = 8
         self.LOGS_SYSTEM_LATEST = 16
-        self.LOGS_SYSTEM_ALL    = 32
-        self.SERVICEVM          = 64
-        self.MINIMAL            = 0
-        self.NORMAL             = 0
-        self.FULL               = 0
-        self.MODE               = 0;
+        self.LOGS_SYSTEM_ALL = 32
+        self.SERVICEVM = 64
+        self.MINIMAL = 0
+        self.NORMAL = 0
+        self.FULL = 0
+        self.MODE = 0
 
     def setMinimalMode(self):
         self.MINIMAL |= self.SYSTEM + self.DB + self.LOGS_CP_LATEST
@@ -31,11 +32,13 @@ class CLOUD_BUGTOOL_MODE:
 
     def setNormalMode(self):
         """ default mode """
-        self.NORMAL  |= self.SYSTEM + self.DB + self.LOGS_CP_LATEST + self.LOGS_SYSTEM_LATEST
+        self.NORMAL |= self.SYSTEM + self.DB + self.LOGS_CP_LATEST \
+            + self.LOGS_SYSTEM_LATEST
         self.MODE = self.NORMAL
 
     def setFullMode(self):
-        self.FULL    |= self.SYSTEM + self.DB + self.LOGS_CP_ALL + self.LOGS_SYSTEM_ALL + self.SERVICEVM
+        self.FULL |= self.SYSTEM + self.DB + self.LOGS_CP_ALL \
+            + self.LOGS_SYSTEM_ALL + self.SERVICEVM
         self.MODE = self.FULL
 
     def setNoDB(self):
@@ -55,7 +58,8 @@ class CLOUD_BUGTOOL_MODE:
 
 cloud_bugtool_mode = CLOUD_BUGTOOL_MODE()
 
-def genManifestFile(p_argv, p_tmp_dir):
+
+def addManifestFile(p_argv, p_tmp_dir):
     from xml.dom.minidom import getDOMImplementation
     from xml.dom.minidom import Document
     from time import localtime, strftime
@@ -67,7 +71,7 @@ def genManifestFile(p_argv, p_tmp_dir):
     str_date = strftime("%Y.%m.%d-%H.%M.%S", localtime)
     argvs = ""
     for arg in p_argv:
-        argvs += arg+" "
+        argvs += arg + " "
 
     docManifiest = Document()
 
@@ -103,9 +107,11 @@ def genManifestFile(p_argv, p_tmp_dir):
 
     xml = docManifiest.toxml()
     # print xml
-    manifestFilePath = p_tmp_dir + "/manifest.xml"
+    manifestFilePath = p_tmp_dir + "/Manifest.xml"
     manifestFile = open(manifestFilePath, 'w')
     manifestFile.write(xml)
+    manifestFile.close()
+
 
 def info(msg, result=None):
     from sys import stdout
@@ -211,9 +217,9 @@ def compress_all_logs(p_path):
             zf = ZipFile(zipfile_name, "w")
             for root, dirs, files in walk(path_split2[1]):
                 for filename in files:
-                    if (filename == "cloud.keystore" or \
+                    if filename == "cloud.keystore" or \
                         filename == "cloudmanagementserver.keystore" or \
-                        filename == "key"):
+                        filename == "key":
                             continue
                     file = join(root, filename)
                     zf.write(join(file))
@@ -379,7 +385,7 @@ def sbs_db(p_tmp_dir):
     from os.path import isfile
     from subprocess import Popen
 
-    if not (isfile("/bin/mysqldump") or isfile("/usr/bin/mysqldump") or\
+    if not (isfile("/bin/mysqldump") or isfile("/usr/bin/mysqldump") or
         isfile("/usr/local/bin/mysqldump")):
         mysqldump_missing = "Unable to find mysqldump utility, \
             skipping database dump"
@@ -441,10 +447,13 @@ def sbs_logs(p_tmp_dir):
 
     logs_path = "/var/log/"
 
-    if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_CP_LATEST &\
-        ~( cloud_bugtool_mode.LOGS_CP_ALL | cloud_bugtool_mode.LOGS_SYSTEM_ALL):
-        print "cloud_bugtool_mode.LOGS_CP_LATEST"
-        files = ["api-server.log", "awsapi.log", "catalina.out", "management-server.log"]
+    if cloud_bugtool_mode.defGetMode() & \
+            cloud_bugtool_mode.LOGS_CP_LATEST & \
+            ~(cloud_bugtool_mode.LOGS_CP_ALL |
+                cloud_bugtool_mode.LOGS_SYSTEM_ALL):
+        # print "cloud_bugtool_mode.LOGS_CP_LATEST"
+        files = ["api-server.log", "awsapi.log",
+            "catalina.out", "management-server.log"]
         logs_dir = "/var/log/cloud/management/"
         sbs_path = p_tmp_dir + "/system/var/log/cloud/management/"
         for file in files:
@@ -452,21 +461,23 @@ def sbs_logs(p_tmp_dir):
             cp_ar(full_path, sbs_path)
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_CP_ALL &\
         ~cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        print "cloud_bugtool_mode.LOGS_CP_ALL"
+        # print "cloud_bugtool_mode.LOGS_CP_ALL"
         full_path = "/var/log/cloud/management/"
         sbs_path = p_tmp_dir + "/system/var/log/cloud/management/"
         cp_ar(full_path, sbs_path)
-    if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_SYSTEM_LATEST &\
-        ~cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        print "cloud_bugtool_mode.LOGS_SYSTEM_LATEST"
-        files = ["anaconda.log","boot.log","cron","dmesg","messages","mysqld.log"]
+    if cloud_bugtool_mode.defGetMode() & \
+            cloud_bugtool_mode.LOGS_SYSTEM_LATEST & \
+            ~cloud_bugtool_mode.LOGS_SYSTEM_ALL:
+        # print "cloud_bugtool_mode.LOGS_SYSTEM_LATEST"
+        files = ["anaconda.log", "boot.log", "cron", "dmesg",
+            "messages", "mysqld.log"]
         logs_dir = "/var/log/"
         sbs_path = p_tmp_dir + "/system/var/log/"
         for file in files:
             full_path = logs_dir + file
             cp_ar(full_path, sbs_path)
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        print "cloud_bugtool_mode.LOGS_SYSTEM_ALL"
+        # print "cloud_bugtool_mode.LOGS_SYSTEM_ALL"
         full_path = "/var/log"
         sbs_path = p_tmp_dir + "/system/var/"
         cp_ar(full_path, sbs_path)
@@ -511,26 +522,38 @@ def check_if_cs_installed():
         return cs_installed
     return False
 
+
 def usage():
     from sys import argv
-    print argv[0]+" version "+VERSION+", utility collects information required for CloudStack/CloudPlatform troubleshooting" \
+    print argv[0] + " version " + VERSION + ", utility collects information" \
+        " for CloudStack/CloudPlatform troubleshooting purposes" \
         "\n\n" \
-        "usage: "+argv[0]+" [arguments]" \
+        "usage: " + argv[0] + " [arguments]" \
         "\n\n" \
         "Arguments:\n" \
         "\t-h --help\t\t\t\tthis help\n" \
         "\t-f --full\t\t\t\tFull mode, collects everything\n" \
-        "\t-m --minimal\t\t\t\tCollects only system properties and the latest CloudPlatform log files\n" \
+        "\t-m --minimal\t\t\t\tCollects only system properties and the"\
+            " latest CloudPlatform log files\n" \
         "\t-d --nodb\t\t\t\tDo not include cloud database dump\n" \
-        "\t-s --noservicevm\t\t\tSkip service VMs information [default, not implemented yet]\n" \
+        "\t-s --noservicevm\t\t\tSkip service VMs information "\
+            "[default, not implemented yet]\n" \
         "\n" \
         "Modes:\n" \
         " MINIMAL\tsystem info, latest CP log files\n" \
-        " NORMAL\t\tsystem info, cloud database, latest CP log files, latest system log files [default mode]\n" \
-        " FULL\t\tsystem info, cloud database, all CP log files, all system log files\n" \
-        "\nWe have three modes defined but in case this is needed we can switch off some particular things and don't collect them if needed\n" \
-        "BUG(s) and feedback please send to: radoslaw.smigielski@eu.citrix.com\n" \
+        " NORMAL\t\tsystem info, cloud database, latest CP log files,"\
+            " latest system log files [default mode]\n" \
+        " FULL\t\tsystem info, cloud database, all CP log "\
+            "files, all system log files\n" \
+        "\nWe have three modes defined but in case this is needed we can "\
+            "switch off some particular things"\
+            " and don't collect them if needed\n\n" \
+        "BUG(s) and feedback please send to: "\
+            "radoslaw.smigielski@eu.citrix.com or report on "\
+            "https://github.com/radeksm/incubator-cloudstack"\
+            "/tree/support-tools\n" \
         "\n"
+
 
 def main(p_argv):
     """
@@ -551,7 +574,8 @@ def main(p_argv):
 
     cloud_bugtool_mode.setNormalMode()
     try:
-        opts, args = getopt(argv[1:], "hmfds", ["help", "minimal", "full", "nodb", "noservicevm"])
+        opts, args = getopt(argv[1:], "hmfds", ["help", "minimal",
+            "full", "nodb", "noservicevm"])
         for o, a in opts:
             if o in ("-h", "--help"):
                 usage()
@@ -570,7 +594,7 @@ def main(p_argv):
         exit(2)
     #print cloud_bugtool_mode.defGetMode()
 
-    """ we need to have access to logs and CS config, checking is we are root """
+    """ we need to have access to logs and configs, checking is we are root """
     if geteuid() != 0:
         print "Sorry, you need to run this utility as root"
         exit(1)
@@ -580,7 +604,7 @@ def main(p_argv):
         exit()
 
     """ tmp directory path:
-        /tmp/cloud-bugtool_<DATE and TIME>.<RANDOM STRING>/<HOSTNAME>/ 
+        /tmp/cloud-bugtool_<DATE and TIME>.<RANDOM STRING>/<HOSTNAME>/
     """
     print "We are going to collect diagnostic information now, "\
         "please review the content and remove\nall sensitive information "\
@@ -590,29 +614,34 @@ def main(p_argv):
     str_date = strftime("%Y.%m.%d-%H.%M.%S", localtime)
     tmp_prefix = "cloudstack-bugtool_" + str_date + "."
     tmp_dir = mkdtemp(prefix=tmp_prefix)
+    """ tmp_dir is what we need to cleanup later,
+        because we add hostname to tmp_dir so we save it as tmp_dir_rm  """
+    tmp_dir_rm = tmp_dir
     tmp_dir = tmp_dir + "/" + my_hostname
     mkdir(tmp_dir)
 
     """ what MODE we are running? """
-    print "Mode: "+str(cloud_bugtool_mode.defGetMode())
+    #print "Mode: "+str(cloud_bugtool_mode.defGetMode())
 
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.SYSTEM:
         sbs_system(tmp_dir)
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.DB:
         sbs_db(tmp_dir)
-    if cloud_bugtool_mode.defGetMode() &\
-        (cloud_bugtool_mode.LOGS_CP_LATEST|cloud_bugtool_mode.LOGS_CP_ALL|\
-        cloud_bugtool_mode.LOGS_SYSTEM_LATEST|cloud_bugtool_mode.LOGS_SYSTEM_ALL):
+    if cloud_bugtool_mode.defGetMode() & \
+        (cloud_bugtool_mode.LOGS_CP_LATEST |
+            cloud_bugtool_mode.LOGS_CP_ALL |
+            cloud_bugtool_mode.LOGS_SYSTEM_LATEST |
+            cloud_bugtool_mode.LOGS_SYSTEM_ALL):
         sbs_logs(tmp_dir)
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.SERVICEVM:
         sbs_servicevms(tmp_dir)
 
+    addManifestFile(p_argv, tmp_dir)
     compress_all_logs(tmp_dir)
-    genManifestFile(p_argv, tmp_dir)
 
     if exists(tmp_dir):
         try:
-            rm_rf(tmp_dir)
+            rm_rf(tmp_dir_rm)
         except OSError as e:
             print "Cannot remove temporary directory %s" % tmp_dir
             print e
