@@ -21,8 +21,9 @@ ABOUT:
 
 
 HELP:
-        In current version of cloud-bugtool we netither requier not accept any
-    options, this can be changed in next iterations.
+        In current version cloud-bugtool has few options which allow to specyfy
+    which data will be collected. For more information please run cloud-bugtool
+    with [-h|--help], it displays a usage message on standard output and exit.
     Just execute cloud-bugtool and it collects information from below list
     of CloudStack subsystems:
         - database (cloud database dump)
