@@ -2,7 +2,40 @@
 
 from os.path import isdir
 
-VERSION = "0.3"
+VERSION = "0.4"
+
+class CloudStackVersion:
+    """ we need a way to know version of CloudStack we are on now 
+        this is because some components change location between
+        different versions
+    """
+    def __init__(self):
+        self.CS_VERSION = 0
+
+    def setVersion2(self):
+        self.CS_VERSION = 2
+
+    def setVersion3(self):
+        self.CS_VERSION = 3
+
+    def setVersion4(self):
+        self.CS_VERSION = 4
+
+    def getConfigDir(self):
+        if self.CS_VERSION == 2:
+            return "/etc/cloud/"
+        if self.CS_VERSION == 3:
+            return "/etc/cloud/"
+        if self.CS_VERSION == 4:
+            return "/etc/cloudstack/"
+
+    def getLogDir(self):
+        if self.CS_VERSION == 2:
+            return "/var/log/cloud"
+        if self.CS_VERSION == 3:
+            return "/var/log/cloud"
+        if self.CS_VERSION == 4:
+            return "/var/log/cloudstack"
 
 
 class CLOUD_BUGTOOL_MODE:
@@ -55,7 +88,8 @@ class CLOUD_BUGTOOL_MODE:
             print "Internal error, MODE not defined"
             exit(2)
 
-
+# global variables
+cs_version = CloudStackVersion()
 cloud_bugtool_mode = CLOUD_BUGTOOL_MODE()
 
 
@@ -248,7 +282,7 @@ def sbs_system_cmd_exec(p_cmd, p_path):
     from subprocess import Popen
 
     out_file = p_path + "/" + p_cmd.replace(" ", "")
-    # print "%s, %s, %s" % (p_cmd,p_path,out_file)
+    #print "%s, %s, %s" % (p_cmd,p_path,out_file)
 
     """ exec commands """
     if isdir(p_path):
@@ -259,7 +293,7 @@ def sbs_system_cmd_exec(p_cmd, p_path):
             p.wait()
             file.close()
         except OSError as e:
-            print e
+            print "Skip command: " + str(cmd_args) + ", " + str(e)
     else:
         print "FAIL (this is not a valid directory): %s" % p_path
         return False
@@ -275,7 +309,7 @@ def get_db_properties():
     """
 
     db_dict = {}
-    db_prop_file = "/etc/cloud/management/db.properties"
+    db_prop_file = cs_version.getConfigDir() + "/management/db.properties"
     db_dict["db_prop_file"] = db_prop_file
 
     if isfile(db_prop_file):
@@ -304,10 +338,10 @@ def get_db_properties():
             config.get("default_section", "db.cloud.encryption.type")
 
     else:
-        print "Unable to config file %s" % db_prop_file
+        print "Unable to find config file %s" % db_prop_file
 
     """ how DB pass is encrypted if at all """
-    key_file = "/etc/cloud/management/key"
+    key_file = cs_version.getConfigDir() + "/management/key"
     if isfile(key_file):
         key_file_fd = open(key_file)
         """ we expect just one line """
@@ -354,7 +388,7 @@ def sbs_system(p_tmp_dir):
     cmds = ["df -h", "ps axf", "top -b -n 1", "free -k", "netstat -nlp",
             "date", "dmesg", "uname -a", "whoami", "hostname",
             "ifconfig -a", "route -n", "ip addr sh", "uptime", "hostname -s",
-            "mount -l", "hostname --fqdn", "cloud-sccs"]
+            "mount -l", "hostname --fqdn", "cloud-sccs", "rpm -qa"]
     files = ["/etc/cloudstack-release", "/etc/hosts",
         "/etc/resolv.conf", "/etc/sysctl.conf"]
 
@@ -369,7 +403,7 @@ def sbs_system(p_tmp_dir):
     sbs_path_etc = sbs_path + "/etc"
     mkdir(sbs_path_etc)
     cp_ar("/etc/sysconfig", sbs_path_etc)
-    cp_ar("/etc/cloud", sbs_path_etc)
+    cp_ar(cs_version.getConfigDir(), sbs_path_etc)
 
 
 def sbs_db(p_tmp_dir):
@@ -441,35 +475,37 @@ def sbs_logs(p_tmp_dir):
         sbs_logs() system subsystem
                 collect system properties
     """
+    from os.path import exists
+
     sbs_name = "logs"
     print_sbs_name(sbs_name)
     sbs_path = p_tmp_dir + "/system/var"
     mkdir(sbs_path)
 
-    logs_path = "/var/log/"
-
     if cloud_bugtool_mode.defGetMode() & \
             cloud_bugtool_mode.LOGS_CP_LATEST & \
             ~(cloud_bugtool_mode.LOGS_CP_ALL |
                 cloud_bugtool_mode.LOGS_SYSTEM_ALL):
-        # print "cloud_bugtool_mode.LOGS_CP_LATEST"
-        files = ["api-server.log", "awsapi.log",
-            "catalina.out", "management-server.log"]
-        logs_dir = "/var/log/cloud/management/"
-        sbs_path = p_tmp_dir + "/system/var/log/cloud/management/"
+        #print "cloud_bugtool_mode.LOGS_CP_LATEST"
+        files = ["api-server.log", "apilog.log", "awsapi.log",
+            "catalina.out", "management-server.log", "setupManagement.log"]
+        logs_dir = cs_version.getLogDir() + "/management/"
+        sbs_path = p_tmp_dir + "/system/"+cs_version.getLogDir()+"/management/"
         for file in files:
             full_path = logs_dir + file
-            cp_ar(full_path, sbs_path)
+            if exists(full_path):
+                cp_ar(full_path, sbs_path)
+            else:
+                print "WARNING: file " + full_path + " does not exist"
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_CP_ALL &\
-        ~cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        # print "cloud_bugtool_mode.LOGS_CP_ALL"
-        full_path = "/var/log/cloud/management/"
-        sbs_path = p_tmp_dir + "/system/var/log/cloud/management/"
+        (cloud_bugtool_mode.LOGS_SYSTEM_ALL>0):
+        full_path = cs_version.getLogDir() + "/management/"
+        sbs_path = p_tmp_dir + "/system/"+cs_version.getLogDir()+"/management/"
         cp_ar(full_path, sbs_path)
     if cloud_bugtool_mode.defGetMode() & \
             cloud_bugtool_mode.LOGS_SYSTEM_LATEST & \
             ~cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        # print "cloud_bugtool_mode.LOGS_SYSTEM_LATEST"
+        #print "cloud_bugtool_mode.LOGS_SYSTEM_LATEST"
         files = ["anaconda.log", "boot.log", "cron", "dmesg",
             "messages", "mysqld.log"]
         logs_dir = "/var/log/"
@@ -478,11 +514,10 @@ def sbs_logs(p_tmp_dir):
             full_path = logs_dir + file
             cp_ar(full_path, sbs_path)
     if cloud_bugtool_mode.defGetMode() & cloud_bugtool_mode.LOGS_SYSTEM_ALL:
-        # print "cloud_bugtool_mode.LOGS_SYSTEM_ALL"
+        #print "cloud_bugtool_mode.LOGS_SYSTEM_ALL"
         full_path = "/var/log"
         sbs_path = p_tmp_dir + "/system/var/"
         cp_ar(full_path, sbs_path)
-
     #cp_ar(logs_path, sbs_path)
 
 
@@ -502,10 +537,12 @@ def check_if_cs_installed():
         TODO: find a better way to check if CS is installed
 
         is there any CS installation here?
-        /usr/share/java/cloud-*
-        /etc/cloud
-        /var/log/cloud
-        /usr/share/java/cloud-*
+        CS 3.0.x:
+            /etc/cloud
+            /var/log/cloud
+        CS 4.1.x:
+            /etc/cloudstack
+            /var/log/cloudstack
     """
     from os import listdir
     from re import search
@@ -513,15 +550,24 @@ def check_if_cs_installed():
 
     print ("Checking CloudStack instalation")
 
-    cs_installed = True
+    cs3_installed = True
+    cs4_installed = True
 
-    cs_dirs = ["/etc/cloud", "/var/log/cloud", "/usr/share/java"]
-    for d in cs_dirs:
-        cs_installed &= isdir(d)
-    jar_files = listdir("/usr/share/java")
-    if (search("cloud", str(jar_files))):
-        return cs_installed
-    return False
+    cs3_dirs = ["/etc/cloud", "/var/log/cloud", "/usr/share/java"]
+    cs4_dirs = ["/etc/cloudstack", "/var/log/cloudstack", "/usr/share/java"]
+
+    for d in cs3_dirs:
+        cs3_installed &= isdir(d)
+
+    for d in cs4_dirs:
+        cs4_installed &= isdir(d)
+
+    if cs3_installed:
+        cs_version.setVersion3()
+    if cs4_installed:
+        cs_version.setVersion4()
+
+    return (cs3_installed | cs4_installed | cs_version.CS_VERSION)
 
 
 def usage():
@@ -599,7 +645,6 @@ def main(p_argv):
     if geteuid() != 0:
         print "Sorry, you need to run this utility as root"
         exit(1)
-
     if not check_if_cs_installed():
         print("Cannot find a CloudStack installation on this system, exiting.")
         exit()
