@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+from optparse import OptionParser
+
+import libvirt
+from libvirt import virConnect, virInterface, libvirtError
+
+VERSION = u"0.1"
+
+
+def findInterfaceByName(p_vnet, p_vm):
+    ifstat = None
+    errbuf = None
+    try:
+        ifstat = p_vm.interfaceStats(p_vnet)
+        return ifstat
+    except libvirtError as e:
+        return None
+    except:
+        return None
+
+def main(p_argv):
+    virNic = None
+    conn = None
+    vmid = None
+    vm = None
+
+    try:
+        conn=libvirt.openReadOnly("qemu:///system")
+        for vnet in p_argv:
+            for vmid in conn.listDomainsID():
+                vm = conn.lookupByID(vmid)
+                vifStats = findInterfaceByName(vnet, vm)
+                if bool(vifStats):
+                     print("Vitual interface %s is plugged to %s " \
+                         "\n\t[RX packets: %d" \
+                         ",RX bytes: %d" \
+                         ",TX packets: %d" \
+                         ",TX bytes: %d]" \
+			 % (vnet, vm.name(), \
+                         vifStats[5], vifStats[4], vifStats[1], vifStats[0]))
+    except libvirtError, err:
+        print("Unable connect to local libvirtd: %s" % str(err))
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    from sys import argv
+       
+ 
+    parser = OptionParser(
+        usage="usage: %prog <domain name>",
+        version="%prog " + VERSION
+        )
+    (options, args) = parser.parse_args(argv)
+    main(args[1:])
