@@ -583,7 +583,7 @@ def usage():
         "\t-m --minimal\t\t\t\tCollects only system properties and the"\
             " latest CloudPlatform log files\n" \
         "\t-d --nodb\t\t\t\tDo not include cloud database dump\n" \
-        "\t-s --noservicevm\t\t\tSkip service VMs information "\
+        "\t-s --nosystemvm\t\t\tSkip service VMs information "\
             "[default, not implemented yet]\n" \
         "\n" \
         "Modes:\n" \
@@ -622,7 +622,7 @@ def main(p_argv):
     cloud_bugtool_mode.setNormalMode()
     try:
         opts, args = getopt(argv[1:], "hmfds", ["help", "minimal",
-            "full", "nodb", "noservicevm"])
+            "full", "nodb", "nosystemvm"])
         for o, a in opts:
             if o in ("-h", "--help"):
                 usage()
@@ -633,7 +633,7 @@ def main(p_argv):
                 cloud_bugtool_mode.setFullMode()
             elif o in ("-d", "--nodb"):
                 cloud_bugtool_mode.setNoDB()
-            elif o in ("-s", "--noservicevm"):
+            elif o in ("-s", "--nosystemvm"):
                 cloud_bugtool_mode.setNoServiceVM()
     except GetoptError as err:
         print str(err)

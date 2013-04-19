@@ -47,8 +47,7 @@ def main(p_argv):
 
 if __name__ == "__main__":
     from sys import argv
-       
- 
+
     parser = OptionParser(
         usage="usage: %prog <domain name>",
         version="%prog " + VERSION
