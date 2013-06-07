@@ -366,8 +366,10 @@ def decrypt_db_pass(p_db_dict):
     encPassword = encPassword[4:]
     encPassword = encPassword[:len(encPassword) - 1]
 
-    db_pass_cmd = "java -classpath \
-	/usr/share/java/cloud-jasypt-1.8.jar:/usr/share/java/jasypt-1.9.0.jar \
+    db_pass_cmd = "java -classpath " + \
+        "/usr/share/java/cloud-jasypt-1.8.jar:" + \
+        "/usr/share/java/jasypt-1.9.0.jar:" + \
+        "/usr/share/cloudstack-common/lib/jasypt-1.9.0.jar \
          org.jasypt.intf.cli.JasyptPBEStringDecryptionCLI decrypt.sh input=" \
         + encPassword \
         + " password=" \

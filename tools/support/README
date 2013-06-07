@@ -3,7 +3,9 @@
 
 
 ABOUT:
-        The main purpose behind cloud-bugtool is to make easier collecting
+        Log Collection Utility cloud-bugtool.
+
+    The main purpose behind cloud-bugtool is to make easier collecting
     logs required for CloudStack/CloudPlatform troubleshooting
     and it mainly comes from Support. For those familiar with Xen/XenServer
     cloud-bugtool name may sound similar to xen-bugtool, this similarity
