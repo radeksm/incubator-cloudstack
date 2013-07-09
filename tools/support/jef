@@ -1,22 +1,48 @@
-#!/bin/bash
+#!/usr/bin/awk -f
 
-logfile=$1
+BEGIN {}
 
-if [ -z $logfile ] || [ ! -f $logfile ]
-then
-	echo "Need a log file to proceed."
-	exit
-fi
+{	
+	if ( $0 ~ / ERROR / || $0 ~ / WARN / ) {
+		dt    = $1;
+		tme   = $2
+		thr   = $5;
+		class = $4;
+		sub( /,[0-9][0-9][0-9]/, "", tme );
+		key = dt" "tme" "thr" "class;
+		txt = $0;
+		ewlist[key] = txt;
+		print $0;
+	}
 
-x=0;
-exarr=()
-for Te in $( zgrep "Exception while executing" $logfile | awk '{print$2}' )
-do
-	echo "==> EXCEPTION $x BEGIN"
-	zgrep --colour -n  -B 1  "$Te" $logfile  -m 1
-	zgrep --colour -n  -A 20 "$Te" $logfile | grep "\sat\ "
-	echo "==> EXCEPTION $x END"
-	echo
-	let x=$x+1;
-done
+	# Exceptions
+	if ( /^[a-zA-Z]+.[a-zA-Z]+./ ){
+		print $0;
+		exceptions[NR] = $0
+		e_class = $1; # Exception class name
+		if( uniq_exceptions[e_class] == "" ){
+			uniq_exceptions[e_class] = 1;
+		} else {
+			uniq_exceptions[e_class]++;
+		}
+	}
 
+	# Exception stack trace
+	if ( /^[[:space:]]at[[:space:]][a-zA-Z]/ ){
+		print $0;
+	}
+}
+
+END { 
+	print "\n\n - - = = SUMMARY = = - -\n"
+	print "Exceptions summary all"
+	for(line in exceptions){
+		e = exceptions[line];
+		print "  Line: "line" exceptions: "e
+		nr++;
+	}
+	print "Exceptions in total: " nr"\nExceptions by number of occurrences:"
+	for(uex in uniq_exceptions){
+		print "  "uex" "uniq_exceptions[uex];
+	}
+}
