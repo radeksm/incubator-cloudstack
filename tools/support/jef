@@ -1,6 +1,8 @@
 #!/usr/bin/awk -f
 
-BEGIN {}
+BEGIN {
+    total_number_of_lines = 0;    
+}
 
 {	
     if ( $0 ~ / ERROR / || $0 ~ / WARN / ) {
@@ -16,7 +18,7 @@ BEGIN {}
     }
 
     # Exceptions
-    if ( /^[a-zA-Z]+.[a-zA-Z]+./ ){
+    if ( /^[a-z]+\.[a-zA-Z]+./ ){
         print $0;
         exceptions[NR] = $0
         e_class = $1; # Exception class name
@@ -31,6 +33,12 @@ BEGIN {}
     if ( /^[[:space:]]at[[:space:]][a-zA-Z]/ ){
         print $0;
     }
+
+    if(total_number_of_lines == 0){
+        start_date = $1" "$2;
+    }
+    end_date = $1" "$2;
+    total_number_of_lines++;
 }
 
 END { 
@@ -44,5 +52,17 @@ END {
     print "Exceptions in total: " nr"\nExceptions by number of occurrences:"
     for(uex in uniq_exceptions){
         print "  "uex" "uniq_exceptions[uex];
+    }
+    print "Toatl number of lines in log file: "total_number_of_lines
+    # Below regexp are the only way to match multiple digits in current version of awk
+    # syntaxt like [0-9]{4} doesn't match
+    if ( end_date ~ /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ &&
+        start_date ~ /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ )
+    {
+        sub( /,[0-9][0-9][0-9]/, "", start_date);
+        sub( /,[0-9][0-9][0-9]/, "", end_date);
+        print "Log file starts on "start_date", ends on "end_date"."
+    } else {
+        print "Unable to fully parse log file, either this is not a CloudStack log file or file may be corrupted."
     }
 }
