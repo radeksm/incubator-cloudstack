@@ -3,7 +3,6 @@
 # this sctipt doesn work with mawk on Debian
 
 BEGIN {
-    start_time=systime();
     total_number_of_lines = 0;    
     # need better way of array initialization, this way creates extra empty element
     #uniq_exceptions[""] = 0;
@@ -79,7 +78,4 @@ END {
     } else {
         print "Unable to fully parse log file, either this is not a CloudStack log file or file may be corrupted."
     }
-    end_time=systime();
-    time_to_compleate = end_time - start_time;
-    print "Time to compleate: "time_to_compleate
 }
