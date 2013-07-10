@@ -1,7 +1,14 @@
 #!/usr/bin/awk -f
+# awk version required GNU Awk 3.1.7
+# this sctipt doesn work with mawk on Debian
 
 BEGIN {
+    start_time=systime();
     total_number_of_lines = 0;    
+    # need better way of array initialization, this way creates extra empty element
+    #uniq_exceptions[""] = 0;
+    #exceptions[""] = 0;
+    #sorted_lines[""] = 0;
 }
 
 {	
@@ -30,7 +37,7 @@ BEGIN {
     }
 
     # Exception stack trace
-    if ( /^[[:space:]]at[[:space:]][a-zA-Z]/ ){
+    if ( /^[[:space:]]at[[:space:]][a-z]/ ){
         print $0;
     }
 
@@ -42,16 +49,23 @@ BEGIN {
 }
 
 END { 
-    print "\n\n - - = = SUMMARY = = - -\n"
+    print "\n\n [ - - = = SUMMARY = = - - ]\n"
     print "Exceptions summary all"
+
+    rand1=int(rand()*100 + 0.5);
+    rand2=int(rand()*100 + 0.5)*10;
+    rand3=int(rand()*100 + 0.5)*100;
+    tmp_file = "/tmp/."rand1""rand2""rand3
     for(line in exceptions){
         e = exceptions[line];
-        print "  Line: "line" exceptions: "e
+        print("  Line: "line" exceptions: "e) > tmp_file
         nr++;
     }
+    # I use sort command instead implementing own list sort function
+    system("sort -n  -k 2 "tmp_file);
     print "Exceptions in total: " nr"\nExceptions by number of occurrences:"
     for(uex in uniq_exceptions){
-        print "  "uex" "uniq_exceptions[uex];
+        print ("  "uex" "uniq_exceptions[uex]);
     }
     print "Toatl number of lines in log file: "total_number_of_lines
     # Below regexp are the only way to match multiple digits in current version of awk
@@ -65,4 +79,7 @@ END {
     } else {
         print "Unable to fully parse log file, either this is not a CloudStack log file or file may be corrupted."
     }
+    end_time=systime();
+    time_to_compleate = end_time - start_time;
+    print "Time to compleate: "time_to_compleate
 }
